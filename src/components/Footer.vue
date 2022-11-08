@@ -3,7 +3,7 @@
     <a
       class="nes-icon github"
       rel="noreferrer"
-      href="https://github.com/antfu/vitesse-lite"
+      href="https://github.com/Gaaraly/lucky-time"
       target="_blank"
       title="GitHub"
     />
