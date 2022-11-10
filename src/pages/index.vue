@@ -1,20 +1,51 @@
 <script setup lang="ts">
-interface coin {
-  value: number
-  type: 'red' | 'blue'
-  isOpen: boolean
-}
+let redNum = $ref(Array.from({ length: 6 }) as number[])
+let blueNum = $ref(Array.from({ length: 1 }) as number[])
+let redTick = $ref(Array.from({ length: 7 }) as number[])
+let blueTick = $ref(Array.from({ length: 2 }) as number[])
 
-const red = $ref([1, 2, 3, 4, 5, 6])
-let shakeBlue = $ref(3)
+let isOpen = $ref(false)
+let times = $ref(0)
 
-const { pause, resume, isActive } = useIntervalFn(() => {
-  shakeBlue = Math.floor(Math.random() * 6) + 1
-}, 600, { immediate: false })
+const { lotteries, refresh, isBingo } = useLottery()
+const { lotteries: fakeText, refresh: refreshFakeText } = useLottery()
+
+const {
+  lotteriesRed, lotteriesBlue,
+  ticketsRed, ticketsBlue,
+} = $(lotteries)
+
+// const { pause, resume } = useIntervalFn(() => {
+//   refresh()
+// }, 1, { immediate: false })
+const { pause, resume } = useIntervalFn(() => {
+  refreshFakeText()
+  redNum = fakeText.lotteriesRed
+  blueNum = fakeText.lotteriesBlue
+  redTick = fakeText.ticketsRed
+  blueTick = fakeText.ticketsBlue
+}, 1, { immediate: false })
 
 const handleShaking = () => {
+  isOpen = true
   resume()
+  while (true) {
+    refresh()
+    if (isBingo.value)
+      break
+    times++
+  }
+  redNum = lotteriesRed
+  blueNum = lotteriesBlue
+  redTick = ticketsRed
+  blueTick = ticketsBlue
+  pause()
 }
+
+watchEffect(() => {
+  if (isBingo.value)
+    pause()
+})
 </script>
 
 <template>
@@ -30,25 +61,46 @@ const handleShaking = () => {
     </p>
 
     <div py-4 />
-    <div class="px-10% lg:px-18%">
+    <div class="px-10% lg:px-16%">
       <div class="nes-container is-dark with-title">
         <p class="title">
           Lucky-Number
         </p>
         <div flex justify-center gap-3 lg:gap-5>
-          <div v-for="num in red" :key="num" w-20 h-20 bg-red rounded-md>
-            <i class="nes-icon coin is-medium" top-4 />
+          <div v-for="num in redNum" :key="num" w-20 h-20 bg-red rounded-md>
+            <i v-if="!isOpen" class="nes-icon coin is-medium" top-4 />
+            <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
           </div>
-          <div w-20 h-20 bg-blue rounded-md>
-            <!-- <i class="nes-icon coin is-medium" top-4 /> -->
-            <span text-5xl lh-20>{{ shakeBlue }}</span>
+          <div v-for="num in blueNum" :key="num" w-20 h-20 bg-blue rounded-md>
+            <i v-if="!isOpen" class="nes-icon coin is-medium" top-4 />
+            <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
           </div>
         </div>
-        <button v-if="!isActive" class="nes-btn is-primary" mt-8 @click="handleShaking">
+        <button class="nes-btn is-primary" mt-8 @click="handleShaking">
           Shaking
         </button>
-        <button v-if="isActive" class="nes-btn is-primary" mt-8 @click="pause">
-          Stop
+      </div>
+
+      <div py-6 text-xl>
+        {{ isOpen && `${times} Times, about ${(times / 3 / 52).toFixed(2)} Years` || undefined }}
+      </div>
+
+      <div class="nes-container is-dark with-title">
+        <p class="title">
+          Your-Tickets
+        </p>
+        <div flex justify-center gap-3 lg:gap-5>
+          <div v-for="num in redTick" :key="num" w-20 h-20 bg-red rounded-md>
+            <i v-if="!isOpen" class="nes-icon trophy is-medium" top-4 />
+            <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
+          </div>
+          <div v-for="num in blueTick" :key="num" w-20 h-20 bg-blue rounded-md>
+            <i v-if="!isOpen" class="nes-icon trophy is-medium" top-4 />
+            <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
+          </div>
+        </div>
+        <button class="nes-btn is-primary" mt-8 @click="handleShaking">
+          Shaking
         </button>
       </div>
     </div>

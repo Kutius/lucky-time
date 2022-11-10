@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 const RED_MAX = 33
 const BLUE_MAX = 16
 
@@ -13,7 +12,7 @@ function randomCompose(max: number, count: number) {
     .slice(0, count)
 }
 
-function publishLottery() {
+export function publishLottery() {
   const lotteriesRed = randomCompose(RED_MAX, 6)
   const lotteriesBlue = randomCompose(BLUE_MAX, 1)
   return {
@@ -22,7 +21,7 @@ function publishLottery() {
   }
 }
 
-function bugTickets() {
+export function bugTickets() {
   // Buy 7 Red 2 Blue
   const ticketsRed = randomCompose(RED_MAX, 7)
   const ticketsBlue = randomCompose(BLUE_MAX, 2)
@@ -41,37 +40,44 @@ function collide() {
   return {
     redCollide,
     blueCollide,
-    lotteries: {
-      lotteriesRed,
-      lotteriesBlue,
-    },
-    tickets: {
-      ticketsRed,
-      ticketsBlue,
-    },
+    lotteriesRed,
+    lotteriesBlue,
+    ticketsRed,
+    ticketsBlue,
   }
 }
 
-function main() {
-  let times = 0
-  while (true) {
-    const { redCollide, blueCollide, tickets, lotteries } = collide()
-    const { ticketsRed, ticketsBlue } = tickets
-    const { lotteriesRed, lotteriesBlue } = lotteries
+export const useLottery = () => {
+  const result = reactive({
+    redCollide: false,
+    blueCollide: false,
+    ticketsRed: Array.from({ length: 7 }) as number[],
+    ticketsBlue: Array.from({ length: 2 }) as number[],
+    lotteriesRed: Array.from({ length: 6 }) as number[],
+    lotteriesBlue: Array.from({ length: 1 }) as number[],
+  })
+  const isBingo = computed(() => result.redCollide && result.blueCollide)
 
-    if (redCollide && blueCollide) {
-      console.log('----------------')
-      console.log('中奖了')
-      console.log('中奖号码', lotteriesRed, lotteriesBlue)
-      console.log('购买号码', ticketsRed, ticketsBlue)
-      console.log('购买次数', times)
-      console.log(`花了${(times / 3 / 52).toFixed(2)}年`)
-      console.log('----------------')
-      return
-    }
-    times++
-    console.log(`第${times}次`)
+  const setResult = () => {
+    const {
+      redCollide, blueCollide,
+      lotteriesRed, lotteriesBlue,
+      ticketsRed, ticketsBlue,
+    } = collide()
+    result.redCollide = redCollide
+    result.blueCollide = blueCollide
+    result.lotteriesRed = lotteriesRed
+    result.lotteriesBlue = lotteriesBlue
+    result.ticketsRed = ticketsRed
+    result.ticketsBlue = ticketsBlue
+  }
+  const refresh = () => setResult()
+
+  setResult()
+
+  return {
+    lotteries: result,
+    isBingo,
+    refresh,
   }
 }
-
-main()
