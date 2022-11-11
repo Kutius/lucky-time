@@ -5,47 +5,64 @@ let redTick = $ref(Array.from({ length: 7 }) as number[])
 let blueTick = $ref(Array.from({ length: 2 }) as number[])
 
 let isOpen = $ref(false)
-let times = $ref(0)
-
-const { lotteries, refresh, isBingo } = useLottery()
-const { lotteries: fakeText, refresh: refreshFakeText } = useLottery()
-
+let initialTimeStamp = $ref<number | undefined>()
 const {
-  lotteriesRed, lotteriesBlue,
-  ticketsRed, ticketsBlue,
-} = $(lotteries)
+  timestamp: currentTimeStamp,
+  pause: pauseTime,
+  resume: resumeTime,
+} = useTimestamp({ controls: true })
 
-// const { pause, resume } = useIntervalFn(() => {
-//   refresh()
-// }, 1, { immediate: false })
+const { results: fakeText, refresh: refreshFakeText } = useLottery()
+
+const { data: workerResponse, post } = useWebWorker(
+  '/src/composables/worker.ts',
+  { type: 'module' },
+)
+
+const { count, set: setCount } = useCounter()
+
 const { pause, resume } = useIntervalFn(() => {
   refreshFakeText()
   redNum = fakeText.lotteriesRed
   blueNum = fakeText.lotteriesBlue
   redTick = fakeText.ticketsRed
   blueTick = fakeText.ticketsBlue
-}, 1, { immediate: false })
 
-const handleShaking = () => {
-  isOpen = true
-  resume()
-  while (true) {
-    refresh()
-    if (isBingo.value)
-      break
-    times++
-  }
-  redNum = lotteriesRed
-  blueNum = lotteriesBlue
-  redTick = ticketsRed
-  blueTick = ticketsBlue
-  pause()
+  const ms = currentTimeStamp.value - initialTimeStamp!
+  setCount(Number(f(ms).toFixed(0)))
+}, 50, { immediate: false })
+
+const useWorker = () => {
+  post('start')
 }
 
 watchEffect(() => {
-  if (isBingo.value)
+  if (workerResponse.value) {
     pause()
+    pauseTime()
+    setCount(workerResponse.value.times)
+
+    redNum = workerResponse.value.lotteriesRed
+    blueNum = workerResponse.value.lotteriesBlue
+    redTick = workerResponse.value.ticketsRed
+    blueTick = workerResponse.value.ticketsBlue
+  }
 })
+
+const handleShaking = () => {
+  isOpen = true
+  setCount(0)
+  initialTimeStamp = Date.now()
+  resumeTime()
+
+  resume()
+  useWorker()
+}
+
+// magic
+function f(x: number) {
+  return 196.6 * x - 9533
+}
 </script>
 
 <template>
@@ -82,7 +99,7 @@ watchEffect(() => {
       </div>
 
       <div py-6 text-xl>
-        {{ isOpen && `${times} Times, about ${(times / 3 / 52).toFixed(2)} Years` || undefined }}
+        {{ isOpen && `${count} Times, about ${(count / 3 / 52).toFixed(2)} Years` || undefined }}
       </div>
 
       <div class="nes-container is-dark with-title">

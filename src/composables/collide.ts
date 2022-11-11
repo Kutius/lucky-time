@@ -31,7 +31,7 @@ export function bugTickets() {
   }
 }
 
-function collide() {
+export function collide() {
   const { lotteriesRed, lotteriesBlue } = publishLottery()
   const { ticketsRed, ticketsBlue } = bugTickets()
   const redCollide = lotteriesRed.every(item => ticketsRed.includes(item))
@@ -76,7 +76,7 @@ export const useLottery = () => {
   setResult()
 
   return {
-    lotteries: result,
+    results: result,
     isBingo,
     refresh,
   }
