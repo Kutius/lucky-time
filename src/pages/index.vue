@@ -1,66 +1,100 @@
 <script setup lang="ts">
-let redNum = $ref(Array.from({ length: 6 }) as number[])
-let blueNum = $ref(Array.from({ length: 1 }) as number[])
-let redTick = $ref(Array.from({ length: 7 }) as number[])
-let blueTick = $ref(Array.from({ length: 2 }) as number[])
+type ShakingStatus = 'not-shaking' | 'shaking' | 'shaken'
 
-let isOpen = $ref(false)
+let shakingStatus = $ref<ShakingStatus>('not-shaking')
 let initialTimeStamp = $ref<number | undefined>()
+
+const { count, set: setCount } = useCounter()
+const { results: fakeText, refresh: refreshFakeText } = useLottery()
+const { data: workerResponse, post } = useWebWorker(
+  () => (new Worker(new URL('~/composables/worker.ts', import.meta.url), { type: 'module' })),
+)
 const {
   timestamp: currentTimeStamp,
   pause: pauseTime,
   resume: resumeTime,
 } = useTimestamp({ controls: true })
 
-const { results: fakeText, refresh: refreshFakeText } = useLottery()
+const timesTaken = $computed(() => {
+  const timeSpent = currentTimeStamp.value - initialTimeStamp!
+  // magic
+  return (196.6 * timeSpent - 9533).toFixed(0)
+})
 
-const { data: workerResponse, post } = useWebWorker(
-  () => (new Worker(new URL('~/composables/worker.ts', import.meta.url), { type: 'module' })),
-)
-
-const { count, set: setCount } = useCounter()
-
-const { pause, resume } = useIntervalFn(() => {
+const { pause: pauseRefresh, resume: resumeRefresh } = useIntervalFn(() => {
   refreshFakeText()
-  redNum = fakeText.lotteriesRed
-  blueNum = fakeText.lotteriesBlue
-  redTick = fakeText.ticketsRed
-  blueTick = fakeText.ticketsBlue
-
-  const ms = currentTimeStamp.value - initialTimeStamp!
-  setCount(Number(f(ms).toFixed(0)))
+  setCount(Number(timesTaken))
 }, 50, { immediate: false })
 
 const useWorker = () => {
   post('start')
 }
 
+const redBalls = $computed(() => {
+  if (shakingStatus === 'not-shaking')
+    return Array.from({ length: 6 }) as number[]
+
+  else if (shakingStatus === 'shaking')
+    return fakeText.lotteriesRed
+
+  else
+    return workerResponse.value.lotteriesRed as number[]
+})
+
+const blueBalls = $computed(() => {
+  if (shakingStatus === 'not-shaking')
+    return Array.from({ length: 1 })
+
+  else if (shakingStatus === 'shaking')
+    return fakeText.lotteriesBlue
+
+  else
+    return workerResponse.value.lotteriesBlue
+})
+
+const redTickets = $computed(() => {
+  if (shakingStatus === 'not-shaking')
+    return Array.from({ length: 7 })
+
+  else if (shakingStatus === 'shaking')
+    return fakeText.ticketsRed
+
+  else
+    return workerResponse.value.ticketsRed
+})
+
+const blueTickets = $computed(() => {
+  if (shakingStatus === 'not-shaking')
+    return Array.from({ length: 2 })
+
+  else if (shakingStatus === 'shaking')
+    return fakeText.ticketsBlue
+
+  else
+    return workerResponse.value.ticketsBlue
+})
+
 watchEffect(() => {
   if (workerResponse.value) {
-    pause()
+    pauseRefresh()
     pauseTime()
     setCount(workerResponse.value.times)
-
-    redNum = workerResponse.value.lotteriesRed
-    blueNum = workerResponse.value.lotteriesBlue
-    redTick = workerResponse.value.ticketsRed
-    blueTick = workerResponse.value.ticketsBlue
+    shakingStatus = 'shaken'
   }
 })
 
-const handleShaking = () => {
-  isOpen = true
+const init = () => {
   setCount(0)
   initialTimeStamp = Date.now()
   resumeTime()
-
-  resume()
-  useWorker()
+  resumeRefresh()
 }
 
-// magic
-function f(x: number) {
-  return 196.6 * x - 9533
+const handleShaking = () => {
+  shakingStatus = 'shaking'
+  init()
+
+  useWorker()
 }
 </script>
 
@@ -83,22 +117,28 @@ function f(x: number) {
           Lucky-Number
         </p>
         <div flex justify-center gap-3 lg:gap-5>
-          <div v-for="num in redNum" :key="num" w-20 h-20 bg-red rounded-md>
-            <i v-if="!isOpen" class="nes-icon coin is-medium" top-4 />
+          <div v-for="num in redBalls" :key="num" w-20 h-20 bg-red rounded-md>
+            <i v-if="shakingStatus === 'not-shaking'" class="nes-icon coin is-medium" top-4 />
             <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
           </div>
-          <div v-for="num in blueNum" :key="num" w-20 h-20 bg-blue rounded-md>
-            <i v-if="!isOpen" class="nes-icon coin is-medium" top-4 />
+          <div v-for="num in blueBalls" :key="num" w-20 h-20 bg-blue rounded-md>
+            <i v-if="shakingStatus === 'not-shaking'" class="nes-icon coin is-medium" top-4 />
             <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
           </div>
         </div>
-        <button class="nes-btn is-primary" mt-8 @click="handleShaking">
-          Shaking
+        <button
+          class="nes-btn"
+          :class="{ 'is-disabled': shakingStatus === 'shaking' }"
+          mt-8
+          :disabled="shakingStatus === 'shaking'"
+          @click="handleShaking"
+        >
+          {{ shakingStatus === 'shaken' ? 'Reset' : 'Shaking' }}
         </button>
       </div>
 
       <div py-6 text-xl>
-        {{ isOpen && `${count} Times, about ${(count / 3 / 52).toFixed(2)} Years` || undefined }}
+        {{ shakingStatus !== 'not-shaking' && `${count} Times, about ${(count / 3 / 52).toFixed(2)} Years` || undefined }}
       </div>
 
       <div class="nes-container is-dark with-title">
@@ -106,18 +146,15 @@ function f(x: number) {
           Your-Tickets
         </p>
         <div flex justify-center gap-3 lg:gap-5>
-          <div v-for="num in redTick" :key="num" w-20 h-20 bg-red rounded-md>
-            <i v-if="!isOpen" class="nes-icon trophy is-medium" top-4 />
+          <div v-for="num in redTickets" :key="num" w-20 h-20 bg-red rounded-md>
+            <i v-if="shakingStatus === 'not-shaking'" class="nes-icon trophy is-medium" top-4 />
             <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
           </div>
-          <div v-for="num in blueTick" :key="num" w-20 h-20 bg-blue rounded-md>
-            <i v-if="!isOpen" class="nes-icon trophy is-medium" top-4 />
+          <div v-for="num in blueTickets" :key="num" w-20 h-20 bg-blue rounded-md>
+            <i v-if="shakingStatus === 'not-shaking'" class="nes-icon trophy is-medium" top-4 />
             <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
           </div>
         </div>
-        <button class="nes-btn is-primary" mt-8 @click="handleShaking">
-          Shaking
-        </button>
       </div>
     </div>
   </div>

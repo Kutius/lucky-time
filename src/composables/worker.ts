@@ -10,6 +10,7 @@ onmessage = () => {
       ticketsRed, ticketsBlue,
     } = collide()
     times += 1
+
     if (redCollide && blueCollide) {
       postMessage({
         times,
