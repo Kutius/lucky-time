@@ -15,8 +15,7 @@ const {
 const { results: fakeText, refresh: refreshFakeText } = useLottery()
 
 const { data: workerResponse, post } = useWebWorker(
-  '/src/composables/worker.ts',
-  { type: 'module' },
+  () => (new Worker(new URL('~/composables/worker.ts', import.meta.url), { type: 'module' })),
 )
 
 const { count, set: setCount } = useCounter()
