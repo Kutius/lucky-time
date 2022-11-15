@@ -1,4 +1,11 @@
 <script setup lang="ts">
+interface WorkerMsg {
+  times: number
+  lotteriesRed: number[]
+  lotteriesBlue: number[]
+  ticketsRed: number[]
+  ticketsBlue: number[]
+}
 type ShakingStatus = 'not-shaking' | 'shaking' | 'shaken'
 
 let shakingStatus = $ref<ShakingStatus>('not-shaking')
@@ -6,7 +13,7 @@ let initialTimeStamp = $ref<number | undefined>()
 
 const { count, set: setCount } = useCounter()
 const { results: fakeText, refresh: refreshFakeText } = useLottery()
-const { data: workerResponse, post } = useWebWorker(
+const { data: workerResponse, post } = useWebWorker<WorkerMsg>(
   () => (new Worker(new URL('~/composables/worker.ts', import.meta.url), { type: 'module' })),
 )
 const {
@@ -32,18 +39,18 @@ const useWorker = () => {
 
 const redBalls = $computed(() => {
   if (shakingStatus === 'not-shaking')
-    return Array.from({ length: 6 }) as number[]
+    return Array.from<number>({ length: 6 })
 
   else if (shakingStatus === 'shaking')
     return fakeText.lotteriesRed
 
   else
-    return workerResponse.value.lotteriesRed as number[]
+    return workerResponse.value.lotteriesRed
 })
 
 const blueBalls = $computed(() => {
   if (shakingStatus === 'not-shaking')
-    return Array.from({ length: 1 })
+    return Array.from<number>({ length: 1 })
 
   else if (shakingStatus === 'shaking')
     return fakeText.lotteriesBlue
@@ -54,7 +61,7 @@ const blueBalls = $computed(() => {
 
 const redTickets = $computed(() => {
   if (shakingStatus === 'not-shaking')
-    return Array.from({ length: 7 })
+    return Array.from<number>({ length: 7 })
 
   else if (shakingStatus === 'shaking')
     return fakeText.ticketsRed
@@ -65,7 +72,7 @@ const redTickets = $computed(() => {
 
 const blueTickets = $computed(() => {
   if (shakingStatus === 'not-shaking')
-    return Array.from({ length: 2 })
+    return Array.from<number>({ length: 2 })
 
   else if (shakingStatus === 'shaking')
     return fakeText.ticketsBlue
@@ -141,21 +148,11 @@ const handleShaking = () => {
         {{ shakingStatus !== 'not-shaking' && `${count} Times, about ${(count / 3 / 52).toFixed(2)} Years` || undefined }}
       </div>
 
-      <div class="nes-container is-dark with-title">
-        <p class="title">
-          Your-Tickets
-        </p>
-        <div flex justify-center gap-3 lg:gap-5>
-          <div v-for="num in redTickets" :key="num" w-20 h-20 bg-red rounded-md>
-            <i v-if="shakingStatus === 'not-shaking'" class="nes-icon trophy is-medium" top-4 />
-            <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
-          </div>
-          <div v-for="num in blueTickets" :key="num" w-20 h-20 bg-blue rounded-md>
-            <i v-if="shakingStatus === 'not-shaking'" class="nes-icon trophy is-medium" top-4 />
-            <span v-else text-4xl lh-21 ml-1>{{ num }}</span>
-          </div>
-        </div>
-      </div>
+      <Tickets
+        :shaking-status="shakingStatus"
+        :red-tickets="redTickets"
+        :blue-tickets="blueTickets"
+      />
     </div>
   </div>
 </template>
