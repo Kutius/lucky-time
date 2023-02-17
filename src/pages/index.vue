@@ -153,6 +153,8 @@ const handleShaking = () => {
         :red-tickets="redTickets"
         :blue-tickets="blueTickets"
       />
+
+      <Dialogs />
     </div>
   </div>
 </template>
